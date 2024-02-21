@@ -1,9 +1,11 @@
-#include "../include/display.h"
+#include "../include/client.h"
+#include "../include/server.h"
 #include <stdlib.h>
 
 int main(void)
 {
-    display("Hello, World");
+    client("Hello, World");
+    server("Hello, World");
 
     return EXIT_SUCCESS;
 }
