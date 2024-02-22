@@ -1,17 +1,13 @@
 #include "../include/server.h"
 #include <arpa/inet.h>
-#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <stdbool.h> // Include for bool type
-
 
 #define BUFFER_SIZE 1024
 #define TEN 10
 #define FIVE 5
-#define MAX_CLIENTS 10
 
 #ifndef SOCK_CLOEXEC
     #pragma GCC diagnostic push
@@ -20,7 +16,7 @@
     #pragma GCC diagnostic pop
 #endif
 
-// Start the server
+// Modify the server function to pass the client socket as an argument
 void server(const char *server_ip, int server_port)
 {
     int server_socket = create_server_socket(server_ip, server_port);
@@ -29,10 +25,8 @@ void server(const char *server_ip, int server_port)
     while(1)
     {
         struct sockaddr_in client_address;
-        struct ThreadArgs *args;
-        pthread_t tid;
-        socklen_t client_address_len;
-        int       client_socket;
+        socklen_t          client_address_len;
+        int                client_socket;
 
         client_address_len = sizeof(client_address);
         client_socket      = accept(server_socket, (struct sockaddr *)&client_address, &client_address_len);
@@ -42,20 +36,6 @@ void server(const char *server_ip, int server_port)
             continue;
         }
         printf("Client connected\n");
-
-        // Create a new thread to handle the client connection
-
-        args = malloc(sizeof(struct ThreadArgs));
-        if(args == NULL)
-        {
-            perror("Memory allocation failed");
-            close(client_socket);
-            continue;
-        }
-        args->client_socket = client_socket;
-
-        pthread_create(&tid, NULL, client_handler, args);
-        pthread_detach(tid);
     }
 }
 
@@ -99,14 +79,10 @@ int create_server_socket(const char *server_ip, int server_port)
 // Client handler thread function
 void *client_handler(void *args)
 {
-    struct ThreadArgs *thread_args   = (struct ThreadArgs *)args;
-    int                client_socket = thread_args->client_socket;
-    char               buffer[BUFFER_SIZE];
-    bool should_continue = true; // Define a flag to control the loop
+    int  client_socket = *((int *)args);    // Extract the client socket from the argument
+    char buffer[BUFFER_SIZE];
 
-
-
-    while(should_continue)
+    while(1)
     {
         ssize_t bytes_received = read(client_socket, buffer, sizeof(buffer) - 1);
 
@@ -118,17 +94,12 @@ void *client_handler(void *args)
             return NULL;
         }
 
-
-
         // Null-terminate the received data
         buffer[bytes_received] = '\0';
 
         // Print the received information
         printf("Received from client: %s\n", buffer);
-
     }
-
-
 }
 
 int main(int argc, const char *argv[])
@@ -146,13 +117,14 @@ int main(int argc, const char *argv[])
     port      = strtol(argv[2], NULL, TEN);
 
     server(server_ip, (int)port);
-
-    return 0;
 }
 
-
-/*
+/**
  * TODO:
- * fix concurrency
- * accept commands
- * /
+ * Concurrency
+ * Allow messages to be independently handled per thread
+ * Currently the server can't handle more than 1 message per client at a time
+ * Currently the server will send a message received by 1 client to another automatically
+ * Use the same commands as A2 T3
+ *
+ */
