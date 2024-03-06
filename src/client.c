@@ -62,14 +62,16 @@ int main(int argc, const char *argv[])
         exit(EXIT_FAILURE);
     }
 
-    if(connect(client_socket, (struct sockaddr *)&server_address, sizeof(server_address)) == -1)
+    // Connect to the server
+    if (connect(client_socket, (struct sockaddr *)&server_address, sizeof(server_address)) == -1)
     {
         perror("Connection failed");
-        free(server_ip);    // Free memory allocated for server_ip before exiting
+        free(server_ip);
         exit(EXIT_FAILURE);
     }
 
-    while(1)
+    // Main loop for sending messages
+    while (1)
     {
         // Get message from client's terminal
         printf("Enter message to send to server: ");
@@ -79,19 +81,19 @@ int main(int argc, const char *argv[])
 
         // Send the message to the server
         ssize_t bytes_sent = send(client_socket, message, strlen(message), 0);
-        if(bytes_sent == -1)
+        if (bytes_sent == -1)
         {
             perror("Send failed");
-            free(server_ip);    // Free memory allocated for server_ip before exiting
+            free(server_ip);
             exit(EXIT_FAILURE);
         }
 
         // Receive response from the server
-        ssize_t bytes_received = recv(client_socket, buffer, BUFFER_SIZE - 1, 0);
-        if(bytes_received == -1)
+        ssize_t bytes_received = read(client_socket, buffer, BUFFER_SIZE - 1);
+        if (bytes_received == -1)
         {
             perror("Receive failed");
-            free(server_ip);    // Free memory allocated for server_ip before exiting
+            free(server_ip);
             exit(EXIT_FAILURE);
         }
 
