@@ -101,6 +101,7 @@ int main(int argc, const char *argv[])
         buffer[bytes_received] = '\0';
 
         printf("Received from server: %s\n", buffer);
+
     }
 
     // Close socket and free memory
@@ -113,8 +114,7 @@ int main(int argc, const char *argv[])
 /**
  *
  * TODO:
- * edit to send and receive data
- * handle commands
- *
+ * handle multiple commands (one after the other and concurrently)
+ * handle executing code
  *
 */

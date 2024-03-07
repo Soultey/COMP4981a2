@@ -9,7 +9,8 @@
 #define BUFFER_SIZE 1024
 #define TEN 10
 #define FIVE 5
-#define MESSAGE "Message received"    // Hardcoded message
+#define FULL_PATH_LENGTH 256
+#define ERROR_MESSAGE_SIZE 19
 
 #ifndef SOCK_CLOEXEC
     #pragma GCC diagnostic push
@@ -91,7 +92,6 @@ void *client_handler(void *args)
     while(1)
     {
         ssize_t bytes_received;
-        ssize_t bytes_sent;
 
         bytes_received = read(client_socket, buffer, BUFFER_SIZE - 1);
 
@@ -102,19 +102,11 @@ void *client_handler(void *args)
             return NULL;
         }
 
-        bytes_sent = send(client_socket, MESSAGE, strlen(MESSAGE), 0);
-        if(bytes_sent == -1)
-        {
-            perror("Send failed");
-            close(client_socket);
-            exit(EXIT_FAILURE);
-        }
-
         buffer[bytes_received] = '\0';
 
         printf("Received from client: %s\n", buffer);
 
-        parse_and_handle_command(buffer);
+        parse_and_execute_command(client_socket, buffer);
 
         // Optional: Add code here to process the received message
 
@@ -125,11 +117,104 @@ void *client_handler(void *args)
     return NULL;
 }
 
-void parse_and_handle_command(const char *buffer)
+int find_binary_executable(const char *command, char *full_path)
 {
-    // Parse the buffer and handle the command
-    // You can implement your logic here to interpret the command
-    printf("your mum: %s\n", buffer);
+    char      *savePtr;
+    const char delimiter[] = ":";
+    char      *path        = getenv("PATH");
+    char      *path_token;
+    if(path == NULL)
+    {
+        fprintf(stderr, "PATH environment variable not found.\n");
+        return EXIT_FAILURE;
+    }
+
+    path_token = strtok_r(path, delimiter, &savePtr);
+
+    while(path_token != NULL)
+    {
+        snprintf(full_path, FULL_PATH_LENGTH, "%s/%s", path_token, command);
+        // Checks if the path is an executable file
+
+        if(access(full_path, X_OK) == 0)
+        {
+            // Binary executable found
+            return EXIT_SUCCESS;
+        }
+        path_token = strtok_r(NULL, delimiter, &savePtr);
+    }
+    fprintf(stderr, "Command %s was not found.\n", command);
+    return EXIT_FAILURE;
+}
+
+void parse_and_execute_command(int client_socket, char *command)
+{
+    char  full_path[FULL_PATH_LENGTH];
+    char *args[BUFFER_SIZE];    // Buffer to hold command and arguments
+    int   argc;
+    char *token;
+    char *savePtr;    // For strtok_r
+
+    // Tokenize the command and arguments
+    argc  = 0;
+    token = strtok_r(command, " ", &savePtr);
+    while(token != NULL && argc < BUFFER_SIZE - 1)
+    {
+        args[argc++] = token;
+        token        = strtok_r(NULL, " ", &savePtr);
+    }
+    args[argc] = NULL;    // Ensure the last argument is NULL
+
+    // Find the binary executable path for the command
+    if(find_binary_executable(args[0], full_path) == EXIT_FAILURE)
+    {
+        char error_message[ERROR_MESSAGE_SIZE];
+        strcpy(error_message, "Command not found\n");
+        send(client_socket, error_message, strlen(error_message), 0);
+        return;
+    }
+
+    // Execute the command process
+    execute_process(full_path, args, client_socket);
+}
+
+void execute_process(const char *full_path, char **args, int client_socket)
+{
+    pid_t pid = fork();
+    if(pid == -1)
+    {
+        perror("Error creating child process");
+        exit(EXIT_FAILURE);
+    }
+    else if(pid == 0)
+    {
+        // Child process
+        // Redirect stdout to client socket
+        if(dup2(client_socket, STDOUT_FILENO) == -1)
+        {
+            perror("Error redirecting stdout");
+            exit(EXIT_FAILURE);
+        }
+                // Close client socket descriptor inherited from parent
+                close(client_socket);
+
+        // Execute the command
+        execv(full_path, args);
+
+        // If execv fails, print error and exit child process
+        perror("Error executing command");
+        exit(EXIT_FAILURE);
+    }
+    else
+    {
+        // Parent process
+        int status;
+        wait(&status);
+        if(WIFEXITED(status))
+        {
+            printf("Child process exited with status: %d\n", WEXITSTATUS(status));
+        }
+    }
 }
 
 int main(int argc, const char *argv[])
