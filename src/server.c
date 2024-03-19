@@ -119,49 +119,42 @@ void *client_handler(void *args)
 
 int find_binary_executable(const char *command, char *full_path)
 {
-    char      *savePtr     = NULL;    // Reset savePtr to NULL before each call
-    const char delimiter[] = ":";
-    char      *path        = getenv("PATH");
-    char      *path_token;
+    const char *path = getenv("PATH");
+    char       *path_copy;
+    char       *path_token;
+    char       *position    = NULL;
+    const char  delimiter[] = ":";
 
-    if(path != NULL)
+    // Make a copy of the PATH variable
+    path_copy = strdup(path);
+    if(path_copy == NULL)
     {
-        printf("PATH environment variable: %s\n", path);
-    }
-    else
-    {
-        printf("PATH environment variable is not set\n");
-    }
-
-    if(path == NULL)
-    {
-        fprintf(stderr, "PATH environment variable not found.\n");
+        perror("Memory allocation failed");
         return EXIT_FAILURE;
     }
 
-    printf("Attempting to find %s in directories:\n", command);
+    // Tokenize the copy of the PATH variable
+    path_token = strtok_r(path_copy, delimiter, &position);
 
-    // Reset savePtr to NULL before each call to strtok_r
-    savePtr = NULL;
-
-    path_token = strtok_r(path, delimiter, &savePtr);
-
-    path = NULL;
-
+    // Iterate over each directory in the PATH
     while(path_token != NULL)
     {
         snprintf(full_path, FULL_PATH_LENGTH, "%s/%s", path_token, command);
-        // Checks if the path is an executable file
 
+        // Check if the path is an executable file
         if(access(full_path, X_OK) == 0)
         {
-            // Binary executable found
+            free(path_copy);    // Free the copied PATH variable
             return EXIT_SUCCESS;
         }
-        path_token = strtok_r(NULL, delimiter, &savePtr);
-    }
-    fprintf(stderr, "Command %s was not found.\n", command);
 
+        path_token = strtok_r(NULL, delimiter, &position);
+    }
+
+    free(path_copy);    // Free the copied PATH variable
+
+    // Command not found in any directory in the PATH
+    fprintf(stderr, "Command %s was not found.\n", command);
     return EXIT_FAILURE;
 }
 
