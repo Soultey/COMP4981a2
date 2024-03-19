@@ -119,17 +119,34 @@ void *client_handler(void *args)
 
 int find_binary_executable(const char *command, char *full_path)
 {
-    char      *savePtr;
+    char      *savePtr     = NULL;    // Reset savePtr to NULL before each call
     const char delimiter[] = ":";
     char      *path        = getenv("PATH");
     char      *path_token;
+
+    if(path != NULL)
+    {
+        printf("PATH environment variable: %s\n", path);
+    }
+    else
+    {
+        printf("PATH environment variable is not set\n");
+    }
+
     if(path == NULL)
     {
         fprintf(stderr, "PATH environment variable not found.\n");
         return EXIT_FAILURE;
     }
 
+    printf("Attempting to find %s in directories:\n", command);
+
+    // Reset savePtr to NULL before each call to strtok_r
+    savePtr = NULL;
+
     path_token = strtok_r(path, delimiter, &savePtr);
+
+    path = NULL;
 
     while(path_token != NULL)
     {
@@ -144,6 +161,7 @@ int find_binary_executable(const char *command, char *full_path)
         path_token = strtok_r(NULL, delimiter, &savePtr);
     }
     fprintf(stderr, "Command %s was not found.\n", command);
+
     return EXIT_FAILURE;
 }
 
@@ -151,12 +169,11 @@ void parse_and_execute_command(int client_socket, char *command)
 {
     char  full_path[FULL_PATH_LENGTH];
     char *args[BUFFER_SIZE];    // Buffer to hold command and arguments
-    int   argc;
+    int   argc = 0;
     char *token;
     char *savePtr;    // For strtok_r
 
     // Tokenize the command and arguments
-    argc  = 0;
     token = strtok_r(command, " ", &savePtr);
     while(token != NULL && argc < BUFFER_SIZE - 1)
     {
@@ -176,6 +193,8 @@ void parse_and_execute_command(int client_socket, char *command)
 
     // Execute the command process
     execute_process(full_path, args, client_socket);
+
+    savePtr = NULL;
 }
 
 void execute_process(const char *full_path, char **args, int client_socket)
@@ -195,8 +214,8 @@ void execute_process(const char *full_path, char **args, int client_socket)
             perror("Error redirecting stdout");
             exit(EXIT_FAILURE);
         }
-                // Close client socket descriptor inherited from parent
-                close(client_socket);
+        // Close client socket descriptor inherited from parent
+        close(client_socket);
 
         // Execute the command
         execv(full_path, args);
