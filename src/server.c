@@ -1,11 +1,11 @@
 #include "../include/server.h"
 #include <arpa/inet.h>
-#include <pthread.h>    
+#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <sys/wait.h>
+#include <unistd.h>
 
 #define BUFFER_SIZE 1024
 #define TEN 10
@@ -13,14 +13,12 @@
 #define FULL_PATH_LENGTH 256
 #define ERROR_MESSAGE_SIZE 19
 
-
 #ifndef SOCK_CLOEXEC
     #pragma GCC diagnostic push
     #pragma GCC diagnostic ignored "-Wunused-macros"
     #define SOCK_CLOEXEC 0
     #pragma GCC diagnostic pop
 #endif
-
 
 void server(const char *server_ip, int server_port)
 {
@@ -167,7 +165,7 @@ void parse_and_execute_command(int client_socket, char *command)
     char *args[BUFFER_SIZE];    // Buffer to hold command and arguments
     int   argc = 0;
     char *token;
-    char *savePtr;    
+    char *savePtr;
 
     // Tokenize the command and arguments
     token = strtok_r(command, " ", &savePtr);
