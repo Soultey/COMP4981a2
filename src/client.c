@@ -114,7 +114,6 @@ int main(int argc, const char *argv[])
 /**
  *
  * TODO:
- * handle multiple commands (one after the other and concurrently)
  * handle executing code
  *
 */
